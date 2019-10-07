@@ -18,6 +18,8 @@ PointData::PointData(string filename) {
 		utilityCore::safeGetline(fp_in, line);
 		if (!line.empty()) {
 			vector<string> tokens = utilityCore::tokenizeString(line);
+			if (tokens.size() != 3)
+				continue;
 			points.push_back(glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str())));
 		}
 	}

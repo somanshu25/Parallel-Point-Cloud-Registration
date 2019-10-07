@@ -15,6 +15,12 @@
 //#include "svd3.h"
 //#include "svd3_cuda.h"
 #include "main.hpp"
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtx/string_cast.hpp>
+#include <vector>
+#include <sstream>
+#include "glm/glm.hpp"
+#include "utilities.h"
 
 using namespace std;
 
@@ -24,9 +30,34 @@ using namespace std;
 #define gpuKDTree 0
 
 int N_FOR_VIS;
-PointData *sourcePoints = NULL;
-PointData *targetPoints = NULL;
+vector<glm::vec3> sourcePoints;
+vector<glm::vec3> targetPoints;
 
+void readData(string filename,vector<glm::vec3>& points) {
+	int count = 0;
+	cout << "Reading data points from " << filename << " ..." << endl;
+	cout << " " << endl;
+	char* fname = (char*)filename.c_str();
+	ifstream fp_in;
+	fp_in.open(fname);
+	if (!fp_in.is_open()) {
+		cout << "Error reading from file - aborting!" << endl;
+		throw;
+	}
+	while (fp_in.good()) {
+		string line;
+		utilityCore::safeGetline(fp_in, line);
+		if (!line.empty()) {
+			count++;
+			vector<string> tokens = utilityCore::tokenizeString(line);
+			if (count < 25)
+				continue;
+			if (tokens.size() != 3)
+				break;
+			points.push_back(glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str())));
+		}
+	}
+}
 
 
 int main(int argc, char* argv[]) {
@@ -35,33 +66,23 @@ int main(int argc, char* argv[]) {
 	//vector<glm::vec3> source = readData("../data-set/vertex.txt");
 	// *target = readData("../data-set/top3_vertex.txt");
 
-	sourcePoints = new PointData(argv[1]);
-	targetPoints = new PointData(argv[2]);
+	readData(argv[1],sourcePoints);
+	readData(argv[2],targetPoints);
 
 	printf("For Source Points, first 5 points are: \n");
 
-	
-	for (int i = 0; i < 5; i++) {
-		printf("%0.4f %0.4f, %0.4f \n", sourcePoints->points[i].x, sourcePoints->points[i].y, sourcePoints->points[i].z);
-	}
-
-	printf("For Target Points, first 5 points are: \n");
-
-	for (int i = 0; i < 5; i++) {
-		printf("%0.4f %0.4f, %0.4f \n", targetPoints->points[i].x, targetPoints->points[i].y, targetPoints->points[i].z);
-	}
+	N_FOR_VIS = sourcePoints.size() + targetPoints.size();
+	printf("Size of source pointcloud: %d\n", sourcePoints.size());
+	printf("Size of target pointcloud: %d\n", targetPoints.size());
 
 	if (init(argc, argv)) {
-		printf("jfkgkg\n");
 		mainLoop();
 		scanMatchingICP::endSimulation();
 		return 0;
 	}
 	else {
-		printf("Bababa\n");
 		return 1;
 	}
-	printf("hhhhhhhhhhhhhh \n");
 }
 
 
@@ -140,7 +161,7 @@ bool init(int argc, char **argv) {
 	cudaGLRegisterBufferObject(boidVBO_velocities);
 
 	// Initialize N-body simulation
-	scanMatchingICP::initSimulation(sourcePoints->points,targetPoints->points);
+	scanMatchingICP::initSimulation(sourcePoints, targetPoints);
 
 	updateCamera();
 
@@ -214,7 +235,7 @@ void initShaders(GLuint * program) {
 //====================================
 // Main loop
 //====================================
-void runCUDA() {
+void runCUDA(int iter) {
 	// Map OpenGL buffer object for writing from CUDA on a single GPU
 	// No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not
 	// use this buffer
@@ -229,7 +250,7 @@ void runCUDA() {
 	
 	// execute the kernel
 	#if cpuVersion
-		scanMatchingICP::cpuNaive(sourcePoints->points,targetPoints->points);
+		scanMatchingICP::cpuNaive(sourcePoints, targetPoints,iter);
 	#elif gpuVersion
 		scanMatchingICP::gpuNaive();
 	#else
@@ -249,7 +270,6 @@ void mainLoop() {
 	double fps = 0;
 	double timebase = 0;
 	int frame = 0;
-	printf("It came here \n");
 	//scanMatchingICP::unitTest(); // LOOK-1.2 We run some basic example code to make sure
 					   // your CUDA development setup is ready to go.
 
@@ -265,7 +285,7 @@ void mainLoop() {
 			frame = 0;
 		}
 
-		runCUDA();
+		runCUDA(frame);
 
 		std::ostringstream ss;
 		ss << "[";
