@@ -25,8 +25,8 @@
 using namespace std;
 
 #define VISUALIZE 1
-#define cpuVersion 1
-#define gpuVersion 0
+#define cpuVersion 0
+#define gpuVersion 1
 #define gpuKDTree 0
 
 int N_FOR_VIS;

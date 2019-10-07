@@ -214,15 +214,15 @@ __global__ void kernCopyVelocitiesToVBO(int N, glm::vec3 *vel, float *vbo, float
   }
 }
 
-/*
-__global__ void outerProduct(int sourceSize, glm::vec3 *source, glm::vec3 *target,glm::mat3 out) {
+
+__global__ void outerProduct(int sourceSize, glm::vec3 *source, glm::vec3 *target,glm::mat3 *out) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= sourceSize)
 		return;
 
 	out[index] = glm::outerProduct(source[index], target[index]);
 }
-*/
+
 __global__ void kernMatrixMultiplication(glm::vec3 *M, glm::vec3 *N, float *Out, int m, int n, int k) {
 	int row = blockIdx.y * blockDim.y + threadIdx.y;
 	int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -432,16 +432,9 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 
 void scanMatchingICP::gpuNaive() {
 	
-	printf("The value of numObjects is: %d\n",numObjects);
-	//glm::vec3 *check = new glm::vec3[numObjects];
-	//cudaMemcpy(check, dev_pos, numObjects * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-	//checkCUDAErrorWithLine("Mem copy to host failed");
-
-	printf("The value of sourceSize is: %d\n", sourceSize);
 	//float *W = new float[9];
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
 
-	printf("tara rampam \n");
 
 	calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize,targetSize,dev_pos,devCorrespond);
 	checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
@@ -465,20 +458,20 @@ void scanMatchingICP::gpuNaive() {
 	meanCentrePoints << <fullBlocksPerGrid, blockSize >> > (sourceSize,devTempSource, devCorrespond, meanSource, meanCorrespond);
 	checkCUDAErrorWithLine("Kernel meanCentrePoints failed!");
 	
-	//outerProduct << <fullBlocksPerGrid, blockSize >> > (sourceSize, devTempSource, devCorrespond,devMult);
-	//checkCUDAErrorWithLine("Kernel outerProduct failed!");
+	outerProduct << <fullBlocksPerGrid, blockSize >> > (sourceSize, devTempSource, devCorrespond,devMult);
+	checkCUDAErrorWithLine("Kernel outerProduct failed!");
 
-	//glm::mat3 W = thrust::reduce(devMult, devMult + sourceSize, glm::mat3(0));
+	glm::mat3 W = thrust::reduce(thrust::device,devMult, devMult + sourceSize, glm::mat3(0));
 
 	//kernMatrixMultiplication << <fullBlocksPerGrid, blockSize >> > (devTempSource, devCorrespond,W,3,sourceSize,3);
 	//checkCUDAErrorWithLine("Kernel Matrix Multiplication failed!");
-	/*
+	
 	
 	float U[3][3] = { 0 };
 	float S[3][3] = { 0 };
 	float V[3][3] = { 0 };
 
-	svd(W[0], W[1], W[2], W[3], W[4], W[5], W[6], W[7], W[8],
+	svd(W[0][0], W[0][1], W[0][2], W[1][0], W[1][1], W[1][2], W[2][0], W[2][1], W[2][0],
 		U[0][0], U[0][1], U[0][2], U[1][0], U[1][1], U[1][2], U[2][0], U[2][1], U[2][2],
 		S[0][0], S[0][1], S[0][2], S[1][0], S[1][1], S[1][2], S[2][0], S[2][1], S[2][2],
 		V[0][0], V[0][1], V[0][2], V[1][0], V[1][1], V[1][2], V[2][0], V[2][1], V[2][2]
@@ -493,9 +486,19 @@ void scanMatchingICP::gpuNaive() {
 
 	updatePoints << <fullBlocksPerGrid, blockSize >> > (sourceSize,targetSize,dev_pos,R,t);
 	checkCUDAErrorWithLine("Kernel updatePoints failed!");
-	*/
-	printf("Finish ho gaya\n");
+	
+	printf("The Values of Rotation Matrix are: \n");
 
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			printf("%0.4f ", R[i][j]);
+		}
+		printf("\n");
+	}
+
+	printf("The translational Matrix is: %0.4f, %0.4f, %0.4f\n", t.x, t.y, t.z);
+
+	//printf("The rotation Matrix is")
 	//free(check);
 }
 
