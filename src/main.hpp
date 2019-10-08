@@ -14,6 +14,7 @@
 #include "utilities.h"
 #include "glslUtility.hpp"
 #include "kernel.h"
+#include "kdtree.h"
 
 //====================================
 // GL Stuff

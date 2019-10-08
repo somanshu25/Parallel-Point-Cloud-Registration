@@ -70,6 +70,7 @@ set(headers
     src/utilities.h
     src/svd3.h
     src/kernel.h
+    src/kdtree.h
     )
 
 set(sources
@@ -78,6 +79,7 @@ set(sources
     src/glslUtility.cpp
     src/utilities.cpp
     src/kernel.cu
+    src/kdtree.cc
     )
 
 list(SORT headers)

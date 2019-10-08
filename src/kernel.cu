@@ -7,7 +7,8 @@
 #include "kernel.h"
 #include "svd3.h"
 #include <thrust/reduce.h>
-//#include "kdtree.h"
+#include "kdtree.h"
+#include <glm/vec3.hpp>
 
 //#include <glm/gtx/string_cast.hpp>
 using namespace std;
@@ -55,6 +56,7 @@ void checkCUDAError(const char *msg, int line = -1) {
 int numObjects;
 int sourceSize;
 int targetSize;
+int kdTreeLength;
 dim3 threadsPerBlock(blockSize);
 
 // LOOK-1.2 - These buffers are here to hold all your boid information.
@@ -67,6 +69,7 @@ glm::vec3 *dev_vel1;
 glm::vec3 *devCorrespond;
 glm::vec3 *devTempSource;
 glm::mat3 *devMult;
+KDtree::Node *devKDtree;
 // LOOK-2.1 - these are NOT allocated for you. You'll have to set up the thrust
 // pointers on your own too.
 
@@ -141,6 +144,68 @@ __global__ void meanCentrePoints(int N, glm::vec3 *tmpSource, glm::vec3 *corresp
 
 }
 
+__device__ bool getBranch(int depth,glm::vec3 point, glm::vec3 ref) {
+	if (depth % 3 == 0)
+		return point.x < ref.x;
+
+	if (depth % 3 == 0)
+		return point.y < ref.y;
+
+	if (depth % 3 == 0)
+		return point.z < ref.z;
+}
+
+__device__ bool searchBadSide(int depth, glm::vec3 point, glm::vec3 ref, float bestdist) {
+	if (depth % 3 == 0)
+		return (abs(point.x - ref.x) < bestdist);
+
+	if (depth % 3 == 0)
+		return (abs(point.y - ref.y) < bestdist);
+
+	if (depth % 3 == 0)
+		return (abs(point.z - ref.z) < bestdist);
+}
+
+__device__ int traverseTree(glm::vec3 point,bool val,int depth,int nodePos, KDtree::Node *result,int bestPos) {
+	if (val == false)
+		return nodePos;
+
+	float dist = glm::distance(result[nodePos].value, point);
+	float bestDistance = glm::distance(result[bestPos].value , point);
+	if (dist < bestDistance)
+		bestPos = nodePos;
+
+	//Node *good, Node *bad;
+	bool goodValNull, badValNull;
+	int goodNodePos, badNodePos;
+	if (getBranch(depth, result[nodePos].value, point)) {
+		goodNodePos = 2* nodePos + 1;
+		badNodePos = 2 * nodePos + 2;
+		goodValNull = result[nodePos].left;
+		badValNull = result[nodePos].right;
+	}
+	else {
+		goodNodePos = 2* nodePos + 2;
+		badNodePos = 2 * nodePos + 1;
+		goodValNull = result[nodePos].right;
+		badValNull = result[nodePos].left;
+	}
+	bestPos = traverseTree(point,goodValNull, depth++, goodNodePos, result,bestPos);
+
+	if (searchBadSide(depth, result[nodePos].value, point, bestDistance))
+		bestPos = traverseTree(point, badValNull, depth++, badNodePos, result,bestPos);
+
+	return bestPos;
+
+}
+__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, KDtree::Node *result,glm::vec3 *correspond) {
+	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+	if (index >= sourceSize)
+		return;
+
+	int bestPos = traverseTree(dev_pos[index], true, 0, 0, result, 0);
+	correspond[index] = result[bestPos].value;
+}
 /**
 * Initialize memory, update some globals
 */
@@ -150,6 +215,8 @@ void scanMatchingICP::initSimulation(vector<glm::vec3>& source, vector<glm::vec3
   sourceSize = source.size();
   targetSize = target.size();
   dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
+
+  kdTreeLength = pow(2.0, ceil(log2(targetSize / .10) / 1.0));
 
   // LOOK-1.2 - This is basic CUDA memory management and error checking.
   // Don't forget to cudaFree in  Boids::endSimulation.
@@ -168,11 +235,15 @@ void scanMatchingICP::initSimulation(vector<glm::vec3>& source, vector<glm::vec3
   cudaMalloc((void**)&devMult, sourceSize * sizeof(glm::mat3));
   checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
 
+  cudaMalloc((void**)&devKDtree, kdTreeLength * sizeof(KDtree::Node));
+  checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
+
   //int depth = KDtree::calculateMaxDepth(target,0,0);
 
- // vector<Node*> result;
+  vector<KDtree::Node> result(kdTreeLength);
 
-  //KDtree::createTree(target,result);
+  KDtree::createTree(target,result);
+  cudaMemcpy(devKDtree, &result[0], result.size() * sizeof(KDtree::Node), cudaMemcpyHostToDevice);
 
   // Initialize the KDtree
  // cudaMalloc((void**)&devKD, sourceSize * sizeof(glm::));
@@ -438,14 +509,19 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 
 }
 
-void scanMatchingICP::gpuNaive() {
+void scanMatchingICP::gpuImplement() {
 	
 	//float *W = new float[9];
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
 
-
-	calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize,targetSize,dev_pos,devCorrespond);
-	checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
+	//#if gpuKDTree
+		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond);
+		checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
+	//#else
+	//	calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
+	//	checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
+	//#endif
+	
 	
 	
 	glm::vec3 meanSource(0.0f, 0.0f, 0.0f);
@@ -520,24 +596,6 @@ void scanMatchingICP::gpuNaive() {
 
 	//printf("The rotation Matrix is")
 	//free(check);
-}
-
-void scanMatchingICP::gpuKDTree() {
-  // TODO-2.3 - start by copying Boids::stepSimulationNaiveGrid
-  // Uniform Grid Neighbor search using Thrust sort on cell-coherent data.
-  // In Parallel:
-  // - Label each particle with its array index as well as its grid index.
-  //   Use 2x width grids
-  // - Unstable key sort using Thrust. A stable sort isn't necessary, but you
-  //   are welcome to do a performance comparison.
-  // - Naively unroll the loop for finding the start and end indices of each
-  //   cell's data pointers in the array of boid indices
-  // - BIG DIFFERENCE: use the rearranged array index buffer to reshuffle all
-  //   the particle data in the simulation array.
-  //   CONSIDER WHAT ADDITIONAL BUFFERS YOU NEED
-  // - Perform velocity updates using neighbor search
-  // - Update positions
-  // - Ping-pong buffers as needed. THIS MAY BE DIFFERENT FROM BEFORE.
 }
 
 void scanMatchingICP::endSimulation() {
