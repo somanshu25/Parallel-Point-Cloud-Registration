@@ -30,6 +30,7 @@ using namespace std;
 #define gpuKDTree 0
 
 int N_FOR_VIS;
+int iter = 0;
 vector<glm::vec3> sourcePoints;
 vector<glm::vec3> targetPoints;
 
@@ -59,7 +60,27 @@ void readData(string filename,vector<glm::vec3>& points) {
 	}
 }
 
-
+void readData2(string filename, vector<glm::vec3>& points) {
+	int count = 0;
+	cout << "Reading data points from " << filename << " ..." << endl;
+	cout << " " << endl;
+	char* fname = (char*)filename.c_str();
+	ifstream fp_in;
+	fp_in.open(fname);
+	if (!fp_in.is_open()) {
+		cout << "Error reading from file - aborting!" << endl;
+		throw;
+	}
+	while (fp_in.good()) {
+		string line;
+		utilityCore::safeGetline(fp_in, line);
+		if (!line.empty()) {
+			count++;
+			vector<string> tokens = utilityCore::tokenizeString(line);
+			points.push_back(glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str())));
+		}
+	}
+}
 int main(int argc, char* argv[]) {
 	printf("Hello World\n");
 
@@ -69,11 +90,13 @@ int main(int argc, char* argv[]) {
 	readData(argv[1],sourcePoints);
 	readData(argv[2],targetPoints);
 
+	//readData2("../data-set/cone.txt", sourcePoints);
 	printf("For Source Points, first 5 points are: \n");
 
 	N_FOR_VIS = sourcePoints.size() + targetPoints.size();
-	printf("Size of source pointcloud: %d\n", sourcePoints.size());
-	printf("Size of target pointcloud: %d\n", targetPoints.size());
+	//N_FOR_VIS = sourcePoints.size();
+	//printf("Size of source pointcloud: %d\n", sourcePoints.size());
+	//printf("Size of target pointcloud: %d\n", targetPoints.size());
 
 	if (init(argc, argv)) {
 		mainLoop();
@@ -89,8 +112,6 @@ int main(int argc, char* argv[]) {
 //-------------------------------
 //---------RUNTIME STUFF---------
 //-------------------------------
-
-
 
 std::string deviceName;
 GLFWwindow *window;
@@ -253,7 +274,7 @@ void runCUDA(int iter) {
 		scanMatchingICP::cpuNaive(sourcePoints, targetPoints,iter);
 	#elif gpuVersion
 		scanMatchingICP::gpuNaive();
-	#else
+	#elif gpuKDTree
 		scanMatchingICP::gpuKDTree();
 	#endif
 	
@@ -275,7 +296,7 @@ void mainLoop() {
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-
+		iter++;
 		frame++;
 		double time = glfwGetTime();
 
@@ -285,7 +306,10 @@ void mainLoop() {
 			frame = 0;
 		}
 
-		runCUDA(frame);
+		runCUDA(iter);
+
+		if (iter == 3)
+			break;
 
 		std::ostringstream ss;
 		ss << "[";

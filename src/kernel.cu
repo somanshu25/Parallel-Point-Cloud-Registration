@@ -7,6 +7,8 @@
 #include "kernel.h"
 #include "svd3.h"
 #include <thrust/reduce.h>
+//#include "kdtree.h"
+
 //#include <glm/gtx/string_cast.hpp>
 using namespace std;
 
@@ -166,9 +168,15 @@ void scanMatchingICP::initSimulation(vector<glm::vec3>& source, vector<glm::vec3
   cudaMalloc((void**)&devMult, sourceSize * sizeof(glm::mat3));
   checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
 
+  //int depth = KDtree::calculateMaxDepth(target,0,0);
 
-  //cudaMalloc((void**)&dev_vel2, N * sizeof(glm::vec4));
-  //checkCUDAErrorWithLine("cudaMalloc dev_vel2 failed!");
+ // vector<Node*> result;
+
+  //KDtree::createTree(target,result);
+
+  // Initialize the KDtree
+ // cudaMalloc((void**)&devKD, sourceSize * sizeof(glm::));
+  //checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
 
   // copy both scene and target to output points
    cudaMemcpy(dev_pos, &source[0], source.size() * sizeof(glm::vec3), cudaMemcpyHostToDevice);
@@ -463,6 +471,16 @@ void scanMatchingICP::gpuNaive() {
 
 	glm::mat3 W = thrust::reduce(thrust::device,devMult, devMult + sourceSize, glm::mat3(0));
 
+	printf("The Values of Matrx Multiplication are: \n");
+
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			printf("%0.4f ", W[i][j]);
+		}
+		printf("\n");
+	}
+
+
 	//kernMatrixMultiplication << <fullBlocksPerGrid, blockSize >> > (devTempSource, devCorrespond,W,3,sourceSize,3);
 	//checkCUDAErrorWithLine("Kernel Matrix Multiplication failed!");
 	
@@ -487,6 +505,8 @@ void scanMatchingICP::gpuNaive() {
 	updatePoints << <fullBlocksPerGrid, blockSize >> > (sourceSize,targetSize,dev_pos,R,t);
 	checkCUDAErrorWithLine("Kernel updatePoints failed!");
 	
+	cudaDeviceSynchronize();
+
 	printf("The Values of Rotation Matrix are: \n");
 
 	for (int i = 0; i < 3; i++) {
