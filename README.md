@@ -30,11 +30,25 @@ CPU Implementation of the scan matching involves searching the correspondence po
 
 In GPU Naive implementation, the difference with respect to the previous CPU Implementation is that there are `sourceSize` number of parallel threads which are released which compute the closest neighbour for each point in source pointcloud seperately. We cna perform this in parallel as each source point is independent of each other when finding the correspondance point in the target pointcloud. The implementation of mean centering, matirx multiplication and updating the source points are also done in parallel for each point in the source pointcloud to improve the time efficiency. For implementing the matrix multiplication, we used the concept of outer product to calculate the matrixes of each row and column vector pair and then apply the `thrust::reduce` to parallely add them to get the final multiplication result.
 
-## KD-tree Implementation
+## K-d-tree Implementation
 
 In the previous implementations, we are doing the naive search over all the points in the target pointcloud. This makes it less efficient as we are unncesessary going over the points which are very far and also doing global reads for those checks, making it more worse. One of the ways to implement it to search in the most likely regions is using K-d tree implementation.  
 
 The k-d tree is a binary tree in which every leaf node is a k-dimensional point. Every non-leaf node can be thought of as implicitly generating a splitting hyperplane that divides the space into two parts, known as half-spaces. Points to the left of this hyperplane are represented by the left subtree of that node and points to the right of the hyperplane are represented by the right subtree[Wikipedia page]. For our use, I'm building the tree on the host as the building of tree has to de done only once and then later on traversing on the tree every iteration. The storage of the tree is in the form of array. If node position is at `pos`, then the left child is stored at `2*pos +1` and the right child is stored at `2*pos+2` position. 
 
 The difference of this implementation is the traversal to find the correspondance. For iterative solution to find the subtree to find the closest points, we are using stack like array to store the elements so that we can come back to the child not visited and apply the closest neighbour search in the k-d tree. The other implementations are same as that of GPU Naive.
+
+## Comparision Results
+
+The scan matching of GIF of all the three implementation are shown in the figures below:
+
+The time comparision of all the three implementations are shown below in the graph:
+
+We cna observe that the k-d tree gives good improvement over the rest of the two implementations.
+
+## Bloopers:
+
+One of the blooper happening in my implementation was when I was not using the stacks different for different threads in my k-d tree traversal.
+
+
 
