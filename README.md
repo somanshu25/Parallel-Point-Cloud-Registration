@@ -32,5 +32,5 @@ In GPU Naive implementation, the difference with respect to the previous CPU Imp
 
 ## KD-tree Implementation
 
-In the previous implementations, we are doing the naive search over all the points in the target pointcloud  
+In the previous implementations, we are doing the naive search over all the points in the target pointcloud. This makes it less efficient as we are unncesessary going over the points which are very far and also doing global reads for those checks, making it more worse. One of the ways to implement it to search in the most likely regions is using K-d tree implementation.  
 
