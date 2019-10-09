@@ -13,11 +13,14 @@ Iterative Closest Point (ICP) is one of the variants to implement scan matching 
 
 ### Theory Behind the Optimization:
 
-<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_1.png" width="700"/></p>
+The below snippet gives the alogirhtm of ICP in a nutshell:
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_1.png" width="500"/></p>
 
-<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_2.png" width="700"/></p>
+In above the optimal solution for rotation matrix `R` and the translational matrix `t` can be written in the follwoing manner:
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_2.png" width="500"/></p>
 
-<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_3.png" width="700"/></p>
+For finding the `U` and `V`, we use the SVD solution by using the below mathematical analysis:
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_3.png" width="500"/></p>
 
 
 ### Different Implementation:
