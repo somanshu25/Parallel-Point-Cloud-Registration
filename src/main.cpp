@@ -34,6 +34,7 @@ int iter = 0;
 vector<glm::vec3> sourcePoints;
 vector<glm::vec3> targetPoints;
 
+
 void readData(string filename,vector<glm::vec3>& points) {
 	int count = 0;
 	cout << "Reading data points from " << filename << " ..." << endl;
@@ -59,6 +60,7 @@ void readData(string filename,vector<glm::vec3>& points) {
 		}
 	}
 }
+
 
 void readData2(string filename, vector<glm::vec3>& points) {
 	int count = 0;
@@ -306,7 +308,7 @@ void mainLoop() {
 
 		runCUDA(iter);
 
-		if (iter == 3)
+		if (iter == 1)
 			break;
 
 		std::ostringstream ss;
