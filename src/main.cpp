@@ -308,8 +308,8 @@ void mainLoop() {
 
 		runCUDA(iter);
 
-		if (iter == 1)
-			break;
+		//if (iter == 1)
+		//	break;
 
 		std::ostringstream ss;
 		ss << "[";

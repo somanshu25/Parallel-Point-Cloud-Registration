@@ -9,12 +9,13 @@ using namespace std;
 
 namespace KDtree {
 	
-	struct Node {
-		Node();
-		__device__ Node(int pos,int depth,bool bad);
-		bool bad;
-		int depth;
-		int index;
+	class Node {
+		public:
+			Node();
+			Node(int pos,int depth,bool bad);
+			bool bad;
+			int depth;
+			int index;
 	};
 	
 	void createTree(vector<glm::vec3>& target,glm::vec4 *result);

@@ -213,7 +213,7 @@ __device__ int traverseTree(glm::vec3 point,int depth,int nodePos, glm::vec4 *re
 }
 */
 
-__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec4 *result,glm::vec3 *correspond,int totalNum, KDtree::Node *stackNode) {
+__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec4 *result,glm::vec3 *correspond,int totalNum, KDtree::Node *stackNode, KDtree::Node n0, KDtree::Node goodNode, KDtree::Node badNode) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= sourceSize)
 		return;
@@ -222,7 +222,12 @@ __global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec
 	int depth = 0;
 	int bestPos = 0;
 	int nodePos;
-	KDtree::Node n0 = KDtree::Node(0, 0, false);
+	//KDtree::Node n0 = KDtree::Node(0,0,true);
+	
+	n0.index = 0;
+	n0.bad = false;
+	n0.depth = 0;
+	
 	stackNode[top] = n0;
 	int goodNodePos, badNodePos;
 	float dist, bestDistance;
@@ -260,8 +265,18 @@ __global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec
 			goodNodePos = 2 * nodePos + 2;
 			badNodePos = 2 * nodePos + 1;
 		}
-		KDtree::Node goodNode = KDtree::Node(goodNodePos, depth + 1, false);
-		KDtree::Node badNode = KDtree::Node(badNodePos, depth + 1, true);
+		//KDtree::Node goodNode = KDtree::Node(goodNodePos, depth + 1, false);
+		//KDtree::Node badNode = KDtree::Node(badNodePos, depth + 1, true);
+		//KDtree::Node goodNode, badNode;
+		
+		goodNode.index = goodNodePos;
+		goodNode.depth = depth + 1;
+		goodNode.bad = false;
+
+		badNode.index = badNodePos;
+		badNode.depth = depth + 1;
+		badNode.bad = true;
+		
 		stackNode[++top] = badNode;
 		stackNode[++top] = goodNode;
 	}
@@ -587,12 +602,13 @@ void scanMatchingICP::gpuImplement() {
 	//float *W = new float[9];
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
 
+	//KDtree::Node n0, goodNode, badNode;
 	//#if gpuKDTree
-		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond,numObjects,devStackNode);
-		checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
+	//	findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond,numObjects,devStackNode,n0,goodNode,badNode);
+	//	checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
 	//#else
-		//calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
-		//checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
+		calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
+		checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
 	//#endif
 	
 	glm::vec3 meanSource(0.0f, 0.0f, 0.0f);

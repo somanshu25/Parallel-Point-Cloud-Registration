@@ -56,3 +56,9 @@ KDtree::Node::Node(int pos,int d, bool b) {
 	depth = depth;
 	bad = b;
 }
+
+KDtree::Node::Node() {
+	index = -1;
+	depth = -1;
+	bad = false;
+}
