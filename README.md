@@ -13,6 +13,11 @@ Iterative Closest Point (ICP) is one of the variants to implement scan matching 
 
 ### Theory Behind the Optimization:
 
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_1.png" width="700"/></p>
+
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_2.png" width="700"/></p>
+
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/Image_T_3.png" width="700"/></p>
 
 
 ### Different Implementation:
@@ -33,6 +38,8 @@ In GPU Naive implementation, the difference with respect to the previous CPU Imp
 ## K-d-tree Implementation
 
 In the previous implementations, we are doing the naive search over all the points in the target pointcloud. This makes it less efficient as we are unncesessary going over the points which are very far and also doing global reads for those checks, making it more worse. One of the ways to implement it to search in the most likely regions is using K-d tree implementation.  
+
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/KDtree_image.png" width="700"/></p>
 
 The k-d tree is a binary tree in which every leaf node is a k-dimensional point. Every non-leaf node can be thought of as implicitly generating a splitting hyperplane that divides the space into two parts, known as half-spaces. Points to the left of this hyperplane are represented by the left subtree of that node and points to the right of the hyperplane are represented by the right subtree[Wikipedia page]. For our use, I'm building the tree on the host as the building of tree has to de done only once and then later on traversing on the tree every iteration. The storage of the tree is in the form of array. If node position is at `pos`, then the left child is stored at `2*pos +1` and the right child is stored at `2*pos+2` position. 
 
