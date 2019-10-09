@@ -70,6 +70,7 @@ glm::vec3 *devCorrespond;
 glm::vec3 *devTempSource;
 glm::mat3 *devMult;
 glm::vec4 *devKDtree;
+KDtree::Node *devStackNode;
 // LOOK-2.1 - these are NOT allocated for you. You'll have to set up the thrust
 // pointers on your own too.
 
@@ -177,6 +178,7 @@ __device__ int searchBadSide(int depth, glm::vec3 point, glm::vec3 ref, float be
 		return (abs(point.z - ref.z) < bestdist);
 }
 
+/*
 __device__ int traverseTree(glm::vec3 point,int depth,int nodePos, glm::vec4 *result,int bestPos) {
 	
 	//if (depth == 0)
@@ -187,6 +189,7 @@ __device__ int traverseTree(glm::vec3 point,int depth,int nodePos, glm::vec4 *re
 
 	float dist = glm::distance(glm::vec3(result[nodePos]), point);
 	float bestDistance = glm::distance(glm::vec3(result[bestPos]) , point);
+
 	if (dist < bestDistance)
 		bestPos = nodePos;
 	//printf("The point under consideration is: %0.4f, %0.4f, %0.4f and the distance between the point :%0.4f, %0.4f, %0.4f is %0.4f for depth of %d and the branch prediction is %d\n", point.x, point.y, point.z, result[nodePos].x, result[nodePos].y, result[nodePos].z, dist, depth, getBranch(depth, point, glm::vec3(result[nodePos])));
@@ -208,17 +211,62 @@ __device__ int traverseTree(glm::vec3 point,int depth,int nodePos, glm::vec4 *re
 	return bestPos;
 
 }
-__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec4 *result,glm::vec3 *correspond) {
+*/
+
+__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec4 *result,glm::vec3 *correspond,int totalNum, KDtree::Node *stackNode) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= sourceSize)
 		return;
 
-	//printf("Hello\n");
-	//if (index == 7) {
-	int bestPos = traverseTree(dev_pos[index], 0, 0, result, 0);
+	int top = 0;
+	int depth = 0;
+	int bestPos = 0;
+	int nodePos;
+	KDtree::Node n0 = KDtree::Node(0, 0, false);
+	stackNode[top] = n0;
+	int goodNodePos, badNodePos;
+	float dist, bestDistance;
+	glm::vec3 point = dev_pos[index];
+	while (top != -1) {
+
+		// do A POP ON THE STACK
+		KDtree::Node n = stackNode[top--];
+
+		// Check if it is NULL (or actually going to child which does not exist
+		if (result[n.index].w == 0.0f)
+			continue;
+
+		// Check if it is a bad node
+		if (n.bad) {
+			bestDistance = glm::distance(glm::vec3(result[bestPos]),point);
+			if (!(searchBadSide(n.depth, glm::vec3(result[n.index]), point, bestDistance)))
+				continue;
+		}
+
+		nodePos = n.index;
+		depth = n.depth;
+
+		dist = glm::distance(glm::vec3(result[nodePos]), point);
+		bestDistance = glm::distance(glm::vec3(result[bestPos]), point);
+
+		if (dist < bestDistance)
+			bestPos = nodePos;
+
+		if (getBranch(depth, point, glm::vec3(result[nodePos]))) {
+			goodNodePos = 2 * nodePos + 1;
+			badNodePos = 2 * nodePos + 2;
+		}
+		else {
+			goodNodePos = 2 * nodePos + 2;
+			badNodePos = 2 * nodePos + 1;
+		}
+		KDtree::Node goodNode = KDtree::Node(goodNodePos, depth + 1, false);
+		KDtree::Node badNode = KDtree::Node(badNodePos, depth + 1, true);
+		stackNode[++top] = badNode;
+		stackNode[++top] = goodNode;
+	}
+
 	correspond[index] = glm::vec3(result[bestPos]);
-	printf("It ended\n");
-	//}
 }
 /**
 * Initialize memory, update some globals
@@ -230,7 +278,7 @@ void scanMatchingICP::initSimulation(vector<glm::vec3>& source, vector<glm::vec3
   targetSize = target.size();
   dim3 fullBlocksPerGrid((numObjects + blockSize - 1) / blockSize);
 
-  kdTreeLength = pow(2.0, ceil(log2(targetSize / 1.0) / 1.0));
+  kdTreeLength = pow(2.0, ceil(log2(targetSize / 1.0) / 1.0) + 1.0);
 
   // LOOK-1.2 - This is basic CUDA memory management and error checking.
   // Don't forget to cudaFree in  Boids::endSimulation.
@@ -251,6 +299,10 @@ void scanMatchingICP::initSimulation(vector<glm::vec3>& source, vector<glm::vec3
 
   cudaMalloc((void**)&devKDtree, kdTreeLength * sizeof(glm::vec4));
   checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
+
+  cudaMalloc((void**)&devStackNode, numObjects * sizeof(KDtree::Node));
+  checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
+
 
   //int depth = KDtree::calculateMaxDepth(target,0,0);
 
@@ -536,7 +588,7 @@ void scanMatchingICP::gpuImplement() {
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
 
 	//#if gpuKDTree
-		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond);
+		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond,numObjects,devStackNode);
 		checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
 	//#else
 		//calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
@@ -545,7 +597,7 @@ void scanMatchingICP::gpuImplement() {
 	
 	glm::vec3 meanSource(0.0f, 0.0f, 0.0f);
 	glm::vec3 meanCorrespond(0.0f, 0.0f, 0.0f);
-	printf("Here I'm done\n");
+	//printf("Here I'm done\n");
 	//thrust::device_ptr<glm::vec3> targetPtr(&dev_pos[sourceSize]);
 	thrust::device_ptr<glm::vec3> sourcePtr(dev_pos);
 	thrust::device_ptr<glm::vec3> correspondPtr(devCorrespond);
@@ -577,7 +629,7 @@ void scanMatchingICP::gpuImplement() {
 	outerProduct << <fullBlocksPerGrid, blockSize >> > (sourceSize, devTempSource, devCorrespond,devMult);
 	checkCUDAErrorWithLine("Kernel outerProduct failed!");
 
-	printf("There are more shit\n");
+	//printf("There are more shit\n");
 	/*
 	glm::vec3 *check = new glm::vec3[sourceSize];
 	cudaMemcpy(check, devCorrespond, sourceSize * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
@@ -597,7 +649,7 @@ void scanMatchingICP::gpuImplement() {
 	*/
 
 	glm::mat3 W = thrust::reduce(thrust::device,devMult, devMult + sourceSize, glm::mat3(0));
-	printf("There are more and more shit\n");
+	//printf("There are more and more shit\n");
 	printf("The Values of Matrx Multiplication are: \n");
 
 	for (int i = 0; i < 3; i++) {
