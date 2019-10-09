@@ -275,7 +275,7 @@ void runCUDA(int iter) {
 	#if cpuVersion
 		scanMatchingICP::cpuNaive(sourcePoints, targetPoints,iter);
 	#elif gpuVersion
-		scanMatchingICP::gpuImplement();
+		scanMatchingICP::gpuImplement(gpuKDTree);
 	#endif
 		
 

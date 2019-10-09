@@ -601,24 +601,24 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 
 }
 
-void scanMatchingICP::gpuImplement() {
+void scanMatchingICP::gpuImplement(bool Kdtree) {
 	
 	//float *W = new float[9];
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
 
 	KDtree::Node n0, goodNode, badNode;
-	//#if gpuKDTree
-		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond,numObjects, (ceil(log2(targetSize / 1.0) / 1.0) + 1.0),n0,goodNode,badNode,devStackNode);
+	if (Kdtree) {
+		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond, numObjects, (ceil(log2(targetSize / 1.0) / 1.0) + 1.0), n0, goodNode, badNode, devStackNode);
 		checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
-	//#else
-		//calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
-		//checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
-	//#endif
+	}
+	else {
+		calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
+		checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
+	}
 	
 	glm::vec3 meanSource(0.0f, 0.0f, 0.0f);
 	glm::vec3 meanCorrespond(0.0f, 0.0f, 0.0f);
-	//printf("Here I'm done\n");
-	//thrust::device_ptr<glm::vec3> targetPtr(&dev_pos[sourceSize]);
+
 	thrust::device_ptr<glm::vec3> sourcePtr(dev_pos);
 	thrust::device_ptr<glm::vec3> correspondPtr(devCorrespond);
 
