@@ -24,5 +24,5 @@ The fowllowing implementations are done to review the performance:
 
 ## CPU Implementation
 
-CPU Implementation of the scan matching involves the 
+CPU Implementation of the scan matching involves searching the correspondence point (the closest point) in the target pointcloud (reference) for each of the point in the source pointcloud (which needs to be transformed to target). The search is naive across all the points in the target pointcloud. After finding the correspondance, we are mean centering the source and correspondance points and then finding the SVD for the `XYT`. 
 
