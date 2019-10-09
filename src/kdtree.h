@@ -16,6 +16,7 @@ namespace KDtree {
 			bool bad;
 			int depth;
 			int index;
+			int parentPos;
 	};
 	
 	void createTree(vector<glm::vec3>& target,glm::vec4 *result);

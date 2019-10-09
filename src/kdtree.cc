@@ -61,4 +61,5 @@ KDtree::Node::Node() {
 	index = -1;
 	depth = -1;
 	bad = false;
+	parentPos = -1;
 }

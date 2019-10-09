@@ -213,7 +213,7 @@ __device__ int traverseTree(glm::vec3 point,int depth,int nodePos, glm::vec4 *re
 }
 */
 
-__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec4 *result,glm::vec3 *correspond,int totalNum, KDtree::Node *stackNode, KDtree::Node n0, KDtree::Node goodNode, KDtree::Node badNode) {
+__global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec4 *result,glm::vec3 *correspond,int totalNum,int maxDepth, KDtree::Node n0, KDtree::Node goodNode, KDtree::Node badNode, KDtree::Node *stackNode) {
 	int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 	if (index >= sourceSize)
 		return;
@@ -227,15 +227,17 @@ __global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec
 	n0.index = 0;
 	n0.bad = false;
 	n0.depth = 0;
+	n0.parentPos = -1;
 	
-	stackNode[top] = n0;
+	//KDtree::Node *stackNode = new KDtree::Node[totalNum];
+	stackNode[index*maxDepth + top] = n0;
 	int goodNodePos, badNodePos;
 	float dist, bestDistance;
 	glm::vec3 point = dev_pos[index];
 	while (top != -1) {
 
 		// do A POP ON THE STACK
-		KDtree::Node n = stackNode[top--];
+		KDtree::Node n = stackNode[index*maxDepth + top--];
 
 		// Check if it is NULL (or actually going to child which does not exist
 		if (result[n.index].w == 0.0f)
@@ -244,7 +246,7 @@ __global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec
 		// Check if it is a bad node
 		if (n.bad) {
 			bestDistance = glm::distance(glm::vec3(result[bestPos]),point);
-			if (!(searchBadSide(n.depth, glm::vec3(result[n.index]), point, bestDistance)))
+			if (!(searchBadSide(n.depth-1, glm::vec3(result[n.parentPos]), point, bestDistance)))
 				continue;
 		}
 
@@ -272,13 +274,15 @@ __global__ void findCorrespondenceKD(int sourceSize,glm::vec3 *dev_pos, glm::vec
 		goodNode.index = goodNodePos;
 		goodNode.depth = depth + 1;
 		goodNode.bad = false;
+		goodNode.parentPos = nodePos;
 
 		badNode.index = badNodePos;
 		badNode.depth = depth + 1;
 		badNode.bad = true;
+		badNode.parentPos = nodePos;
 		
-		stackNode[++top] = badNode;
-		stackNode[++top] = goodNode;
+		stackNode[index*maxDepth + ++top] = badNode;
+		stackNode[index*maxDepth + ++top] = goodNode;
 	}
 
 	correspond[index] = glm::vec3(result[bestPos]);
@@ -315,7 +319,7 @@ void scanMatchingICP::initSimulation(vector<glm::vec3>& source, vector<glm::vec3
   cudaMalloc((void**)&devKDtree, kdTreeLength * sizeof(glm::vec4));
   checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
 
-  cudaMalloc((void**)&devStackNode, numObjects * sizeof(KDtree::Node));
+  cudaMalloc((void**)&devStackNode, sourceSize * (ceil(log2(targetSize / 1.0) / 1.0) + 1.0) * sizeof(KDtree::Node));
   checkCUDAErrorWithLine("cudaMalloc devTempSource failed!");
 
 
@@ -602,13 +606,13 @@ void scanMatchingICP::gpuImplement() {
 	//float *W = new float[9];
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
 
-	//KDtree::Node n0, goodNode, badNode;
+	KDtree::Node n0, goodNode, badNode;
 	//#if gpuKDTree
-	//	findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond,numObjects,devStackNode,n0,goodNode,badNode);
-	//	checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
+		findCorrespondenceKD << <fullBlocksPerGrid, blockSize >> > (sourceSize, dev_pos, devKDtree, devCorrespond,numObjects, (ceil(log2(targetSize / 1.0) / 1.0) + 1.0),n0,goodNode,badNode,devStackNode);
+		checkCUDAErrorWithLine("Kernel CorrespondPoint KD failed!");
 	//#else
-		calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
-		checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
+		//calculateCorrespondPoint << <fullBlocksPerGrid, blockSize >> > (sourceSize, targetSize, dev_pos, devCorrespond);
+		//checkCUDAErrorWithLine("Kernel CorrespondPoint failed!");
 	//#endif
 	
 	glm::vec3 meanSource(0.0f, 0.0f, 0.0f);
@@ -723,7 +727,8 @@ void scanMatchingICP::endSimulation() {
   cudaFree(dev_pos);
   cudaFree(devCorrespond);
   cudaFree(devTempSource);
-
+  cudaFree(devKDtree);
+  cudaFree(devStackNode);
   // TODO-2.1 TODO-2.3 - Free any additional buffers here.
 }
 
