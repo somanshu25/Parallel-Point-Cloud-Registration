@@ -26,16 +26,26 @@ using namespace std;
 
 #define VISUALIZE 1
 #define cpuVersion 0
-#define gpuVersion 1
+#define gpuVersion 0
 #define gpuKDTree 0
+
+glm::vec3 rotation(-0.5f, 0.5f, 0.3f);
+glm::vec3 translate(0.1f, 0.1f, 0.2f);
+glm::vec3 scale(1.5f, 1.5f, 1.5f);
+glm::mat4 transformed = utilityCore::buildTransformationMatrix(translate, rotation, scale);
+
+glm::vec3 rotationTar(-1.0f,0.1f,0.3f);
+glm::vec3 translateTar(0.1f, 0.2f, 0.2f);
+glm::vec3 scaleTar(1.5f, 1.5f, 1.5f);
+glm::mat4 transformedTar = utilityCore::buildTransformationMatrix(translateTar,rotationTar,scaleTar);
 
 int N_FOR_VIS;
 int iter = 0;
 vector<glm::vec3> sourcePoints;
 vector<glm::vec3> targetPoints;
 
-
-void readData(string filename,vector<glm::vec3>& points) {
+void readData(string filename, vector<glm::vec3>& points , vector<glm::vec3>& pointsTar) {
+	glm::vec3 point;
 	int count = 0;
 	cout << "Reading data points from " << filename << " ..." << endl;
 	cout << " " << endl;
@@ -56,11 +66,19 @@ void readData(string filename,vector<glm::vec3>& points) {
 				continue;
 			if (tokens.size() != 3)
 				break;
-			points.push_back(glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str())));
+			point = glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str()));
+			points.push_back(glm::vec3(transformed * glm::vec4(point, 1)));
+
+			if (points.size() < 5) {
+				printf("%.4f %.4f\n", point.x, points[points.size() - 1].x);
+			}
+				
+
+			pointsTar.push_back(glm::vec3(transformedTar * glm::vec4(point, 1)));
+			//points.push_back(transformed * glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str())));
 		}
 	}
 }
-
 
 void readData2(string filename, vector<glm::vec3>& points) {
 	int count = 0;
@@ -84,21 +102,23 @@ void readData2(string filename, vector<glm::vec3>& points) {
 	}
 }
 int main(int argc, char* argv[]) {
-	printf("Hello World\n");
-
-	//vector<glm::vec3> source = readData("../data-set/vertex.txt");
-	// *target = readData("../data-set/top3_vertex.txt");
-
-	readData(argv[1],sourcePoints);
-	readData(argv[2],targetPoints);
+	
+	readData(argv[1], sourcePoints, targetPoints);
+	//readData(argv[2], targetPoints);
 
 	//readData2("../data-set/cone.txt", sourcePoints);
 	printf("For Source Points, first 5 points are: \n");
+	for (int i = 0; i < 5; i++)
+		printf(" %0.4f, %0.4f, %0.4f \n", sourcePoints[i].x, sourcePoints[i].y, sourcePoints[i].z);
 
 	N_FOR_VIS = sourcePoints.size() + targetPoints.size();
 	//N_FOR_VIS = sourcePoints.size();
-	//printf("Size of source pointcloud: %d\n", sourcePoints.size());
-	//printf("Size of target pointcloud: %d\n", targetPoints.size());
+	for (int i = 0; i < 4; i ++)
+		for (int j = 0; j < 4 ; j++)
+			printf("The value of matrix[%d][%d] is: %0.4f \n",j,i,transformed[j][i]);
+
+	printf("Size of source pointcloud: %d\n", sourcePoints.size());
+	printf("Size of target pointcloud: %d\n", targetPoints.size());
 
 	if (init(argc, argv)) {
 		mainLoop();
@@ -272,6 +292,7 @@ void runCUDA(int iter) {
 
 	
 	// execute the kernel
+	
 	#if cpuVersion
 		scanMatchingICP::cpuNaive(sourcePoints, targetPoints,iter);
 	#elif gpuVersion
