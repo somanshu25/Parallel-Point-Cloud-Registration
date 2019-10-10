@@ -51,6 +51,8 @@ The difference of this implementation is the traversal to find the correspondanc
 
 ## Comparision Results
 
+The pointclods are created by taking the "bun000.ply" from the Stanford Repository and transforming both the source and target pointclouds so that they can be visualized better.
+
 The scan matching of GIF of all the three implementation are shown in the figures below:
 
 <p align="center">
