@@ -54,12 +54,12 @@ The difference of this implementation is the traversal to find the correspondanc
 The scan matching of GIF of all the three implementation are shown in the figures below:
 
 <p align="center">
-    CPU Naive            |          GPU Naive  |   GPU with k-d tree
+    CPU Naive            |      GPU Naive  |   GPU with k-d tree
 </p>
 <p align="center">
-  <img src="img/imcpu.gif" width="300" alt="CPU Naive" />
-  <img src="img/image_gpu.gif" width="300" alt="GPU Naive"/> 
-  <img src="img/image_gpu.gif" width="300" alt="GPU with k-d tree"/> 
+  <img src="img/imcpu.gif" width="400" alt="CPU Naive" />
+  <img src="img/image_gpu.gif" width="400" alt="GPU Naive"/> 
+  <img src="img/image_gpu.gif" width="400" alt="GPU with k-d tree"/> 
 </p>     
 
 The time comparision of all the three implementations are shown below in the graph:
