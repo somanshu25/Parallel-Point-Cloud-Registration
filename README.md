@@ -67,7 +67,8 @@ The time comparision ofCPU vs Naive GPU timing is shown in graph below:
 <p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/graph_cpu_gpu.png" width="700"/></p>
 
 We can see from the above graph that GPU performs way way better than the CPU implementation which was as expected.
-The grpah below shows the plot for timing of
+
+The graph below shows the plot for timing of GPU Naive vs GPU k-de tree.
 <p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/graph_gpu_kdtree.png" width="700"/></p>
 
-We can observe that the k-d tree gives good improvement over the rest of two implementations.
+We can observe that the k-d tree gives good improvement over the rest of two implementations after some initial iterations. The reasons for poor initial performance of k-d tree could be linked to more global memory reads and the stack implementation of the k-d tree in GPU in place of normal recursion based approach. In GPU, the recusrsion is not supported and the initial overhead of global memory reads could be impacting the timing. This could be improved by using shared memory which could be taken later on for improving the project.
