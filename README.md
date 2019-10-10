@@ -72,3 +72,15 @@ The graph below shows the plot for timing of GPU Naive vs GPU k-de tree.
 <p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/graph_gpu_kdtree.png" width="700"/></p>
 
 We can observe that the k-d tree gives good improvement over the rest of two implementations after some initial iterations. The reasons for poor initial performance of k-d tree could be linked to more global memory reads and the stack implementation of the k-d tree in GPU in place of normal recursion based approach. In GPU, the recusrsion is not supported and the initial overhead of global memory reads could be impacting the timing. This could be improved by using shared memory which could be taken later on for improving the project.
+
+## Limitations and Further Improvements
+
+One of the limitations of the algorithm is that it cannot exactly scan the pointcloud data which are flipped by very large amount. For example, in the figure shown below, the bunny is rotated by 0 degrees and 180 degrees and the scan macthing gets stuck at when they are exactly flipped.
+
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/blooper_gif.gif" width="700"/></p>
+
+More better look of the above is shown below, where we can see that the ears are exactly miirror image. There could be more improvement that could be done to improve it.
+
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/blooper_2.PNG" width="700"/></p>
+
+
