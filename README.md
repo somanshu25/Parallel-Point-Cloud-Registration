@@ -1,6 +1,6 @@
 Iterative Closest Point
 ======================
-
+![](img/image_gpu.gif)
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Project 4**
 
 * SOMANSHU AGARWAL
