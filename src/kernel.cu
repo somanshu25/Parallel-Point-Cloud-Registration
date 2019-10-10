@@ -9,7 +9,11 @@
 #include <thrust/reduce.h>
 #include "kdtree.h"
 #include <glm/vec3.hpp>
+#include <chrono>
+#include <ctime>
+#include <ratio>
 
+#define RECORD_TIMING 1
 //#include <glm/gtx/string_cast.hpp>
 using namespace std;
 
@@ -462,6 +466,7 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 	
 	vector<glm::vec3> sourceCorrespond, sourceNew;
 	
+	/*
 	printf("Hello here I came in iteration:%d\n",iter);
 	
 	for (int i = 0; i < 5; i++) {
@@ -473,6 +478,11 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 	for (int i = 0; i < 5; i++) {
 		printf("%0.4f %0.4f, %0.4f \n", target[i].x, target[i].y, target[i].z);
 	}
+	*/
+	#if RECORD_TIMING
+		using namespace std::chrono;
+		high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	#endif
 
 	int index;
 	float dist = 0;
@@ -489,12 +499,13 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 		sourceCorrespond.push_back(target[index]);
 	}
 
+	/*
 	printf("For Correspondance Points in target, first 5 points are: \n");
 
 	for (int i = 0; i < 10; i++) {
 		printf("%0.4f %0.4f, %0.4f \n", sourceCorrespond[i].x, sourceCorrespond[i].y, sourceCorrespond[i].z);
 	}
-
+	*/
 	// Mean of the traget and new Ones
 
 	glm::vec3 meanSource(0.0f, 0.0f, 0.0f);
@@ -508,8 +519,8 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 	meanSource /= source.size();
 	meanCorrespond /= source.size();
 
-	printf("Mean of source Points: %0.4f, %0.4f, %0.4f\n", meanSource.x, meanSource.y, meanSource.z);
-	printf("Mean of correspondence Points: %0.4f, %0.4f, %0.4f\n", meanCorrespond.x, meanCorrespond.y, meanCorrespond.z);
+	//printf("Mean of source Points: %0.4f, %0.4f, %0.4f\n", meanSource.x, meanSource.y, meanSource.z);
+	//printf("Mean of correspondence Points: %0.4f, %0.4f, %0.4f\n", meanCorrespond.x, meanCorrespond.y, meanCorrespond.z);
 
 	glm::vec3 point;
 
@@ -535,6 +546,7 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 		}
 	}
 
+	/*
 	printf("The Values of Matrx Multiplication are: \n");
 	
 	for (int i = 0; i < 3; i++) {
@@ -543,7 +555,7 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 		}
 		printf("\n");
 	}
-
+	*/
 	float U[3][3] = { 0 };
 	float S[3][3] = { 0 };
 	float V[3][3] = { 0 };
@@ -561,6 +573,7 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 	glm::mat3 R = g_U * g_Vt;
 	glm::vec3 t = meanCorrespond - R * meanSource;
 
+	/*
 	printf("The values of U are: \n");
 
 	for (int i = 0; i < 3; i++) {
@@ -589,10 +602,17 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 	}
 
 	printf("The translational Matrix is: %0.4f, %0.4f, %0.4f\n", t.x, t.y, t.z);
+	*/
 	// update source points
 	for (int i = 0; i < source.size(); i++) {
 		source[i] = R * source[i] + t;
 	}	
+	#if RECORD_TIMING
+		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+		if (iter < 10)
+			std::cout << "For iter " << iter << " " << time_span.count() << " seconds." << endl;
+	#endif
 	//cudaMemcpy(dev_pos, &source[0], source.size() * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 	cudaMemcpy(dev_pos, &source[0], source.size() * sizeof(glm::vec3), cudaMemcpyHostToDevice);
 
@@ -601,10 +621,15 @@ void scanMatchingICP::cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& tar
 
 }
 
-void scanMatchingICP::gpuImplement(bool Kdtree) {
+void scanMatchingICP::gpuImplement(bool Kdtree,int iter) {
 	
 	//float *W = new float[9];
 	dim3 fullBlocksPerGrid((sourceSize + blockSize - 1) / blockSize);
+
+	#if RECORD_TIMING
+		using namespace std::chrono;
+		high_resolution_clock::time_point t1 = high_resolution_clock::now();
+	#endif
 
 	KDtree::Node n0, goodNode, badNode;
 	if (Kdtree) {
@@ -628,8 +653,8 @@ void scanMatchingICP::gpuImplement(bool Kdtree) {
 	meanSource /= sourceSize;
 	meanCorrespond /= sourceSize;
 
-	printf("Mean of source Points: %0.4f, %0.4f, %0.4f\n", meanSource.x, meanSource.y, meanSource.z);
-	printf("Mean of correspondence Points: %0.4f, %0.4f, %0.4f\n", meanCorrespond.x, meanCorrespond.y, meanCorrespond.z);
+	//printf("Mean of source Points: %0.4f, %0.4f, %0.4f\n", meanSource.x, meanSource.y, meanSource.z);
+	//printf("Mean of correspondence Points: %0.4f, %0.4f, %0.4f\n", meanCorrespond.x, meanCorrespond.y, meanCorrespond.z);
 
 	/*
 	glm::vec3 *check3 = new glm::vec3[sourceSize];
@@ -670,6 +695,7 @@ void scanMatchingICP::gpuImplement(bool Kdtree) {
 
 	glm::mat3 W = thrust::reduce(thrust::device,devMult, devMult + sourceSize, glm::mat3(0));
 	//printf("There are more and more shit\n");
+	/*
 	printf("The Values of Matrx Multiplication are: \n");
 
 	for (int i = 0; i < 3; i++) {
@@ -678,7 +704,7 @@ void scanMatchingICP::gpuImplement(bool Kdtree) {
 		}
 		printf("\n");
 	}
-
+	*/
 
 	//kernMatrixMultiplication << <fullBlocksPerGrid, blockSize >> > (devTempSource, devCorrespond,W,3,sourceSize,3);
 	//checkCUDAErrorWithLine("Kernel Matrix Multiplication failed!");
@@ -706,7 +732,13 @@ void scanMatchingICP::gpuImplement(bool Kdtree) {
 	
 	cudaDeviceSynchronize();
 
-	printf("The Values of Rotation Matrix are: \n");
+	#if RECORD_TIMING
+		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
+		if (iter < 30)
+			std::cout << time_span.count() << endl;
+	#endif
+	/*printf("The Values of Rotation Matrix are: \n");
 
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -716,7 +748,7 @@ void scanMatchingICP::gpuImplement(bool Kdtree) {
 	}
 
 	printf("The translational Matrix is: %0.4f, %0.4f, %0.4f\n", t.x, t.y, t.z);
-
+	*/
 	//printf("The rotation Matrix is")
 	//free(check);
 }

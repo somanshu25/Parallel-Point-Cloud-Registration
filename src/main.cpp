@@ -26,7 +26,7 @@ using namespace std;
 
 #define VISUALIZE 1
 #define cpuVersion 0
-#define gpuVersion 0
+#define gpuVersion 1
 #define gpuKDTree 0
 
 glm::vec3 rotation(-0.5f, 0.5f, 0.3f);
@@ -34,10 +34,10 @@ glm::vec3 translate(0.1f, 0.1f, 0.2f);
 glm::vec3 scale(1.5f, 1.5f, 1.5f);
 glm::mat4 transformed = utilityCore::buildTransformationMatrix(translate, rotation, scale);
 
-glm::vec3 rotationTar(-1.0f,0.1f,0.3f);
+glm::vec3 rotationTar(-1.0f, 0.1f, 0.3f);
 glm::vec3 translateTar(0.1f, 0.2f, 0.2f);
 glm::vec3 scaleTar(1.5f, 1.5f, 1.5f);
-glm::mat4 transformedTar = utilityCore::buildTransformationMatrix(translateTar,rotationTar,scaleTar);
+glm::mat4 transformedTar = utilityCore::buildTransformationMatrix(translateTar, rotationTar, scaleTar);
 
 int N_FOR_VIS;
 int iter = 0;
@@ -97,14 +97,19 @@ void readData2(string filename, vector<glm::vec3>& points) {
 		if (!line.empty()) {
 			count++;
 			vector<string> tokens = utilityCore::tokenizeString(line);
+			if (count < 25)
+				continue;
+			if (tokens.size() != 3)
+				break;
 			points.push_back(glm::vec3(atof(tokens[0].c_str()), atof(tokens[1].c_str()), atof(tokens[2].c_str())));
 		}
 	}
 }
 int main(int argc, char* argv[]) {
 	
-	readData(argv[1], sourcePoints, targetPoints);
-	//readData(argv[2], targetPoints);
+	readData("../data-set/bun000.ply", sourcePoints, targetPoints);
+	//readData2(argv[1], sourcePoints);
+	//readData2(argv[2], targetPoints);
 
 	//readData2("../data-set/cone.txt", sourcePoints);
 	printf("For Source Points, first 5 points are: \n");
@@ -296,13 +301,14 @@ void runCUDA(int iter) {
 	#if cpuVersion
 		scanMatchingICP::cpuNaive(sourcePoints, targetPoints,iter);
 	#elif gpuVersion
-		scanMatchingICP::gpuImplement(gpuKDTree);
+		scanMatchingICP::gpuImplement(gpuKDTree,iter);
 	#endif
 		
 
-#if VISUALIZE
-	scanMatchingICP::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
-#endif
+	#if VISUALIZE
+		scanMatchingICP::copyBoidsToVBO(dptrVertPositions, dptrVertVelocities);
+	#endif
+
 	// unmap buffer object
 	cudaGLUnmapBufferObject(boidVBO_positions);
 	cudaGLUnmapBufferObject(boidVBO_velocities);

@@ -13,7 +13,7 @@ using namespace std;
 namespace scanMatchingICP {
     void initSimulation(vector<glm::vec3>& source, vector<glm::vec3>& target);
     void cpuNaive(vector<glm::vec3>& source, vector<glm::vec3>& target,int iter);
-    void gpuImplement(bool KDtree);
+    void gpuImplement(bool KDtree,int iter);
     void copyBoidsToVBO(float *vbodptr_positions, float *vbodptr_velocities);
 
     void endSimulation();
