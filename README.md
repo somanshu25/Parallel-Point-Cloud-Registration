@@ -62,13 +62,12 @@ The scan matching of GIF of all the three implementation are shown in the figure
   <img src="img/image_gpu.gif" width="400" alt="GPU with k-d tree"/> 
 </p>     
 
-The time comparision of all the three implementations are shown below in the graph:
+The time comparision ofCPU vs Naive GPU timing is shown in graph below:
 
-We cna observe that the k-d tree gives good improvement over the rest of the two implementations.
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/graph_cpu_gpu.png" width="700"/></p>
 
-## Bloopers:
+We can see from the above graph that GPU performs way way better than the CPU implementation which was as expected.
+The grpah below shows the plot for timing of
+<p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/graph_gpu_kdtree.png" width="700"/></p>
 
-One of the blooper happening in my implementation was when I was not using the stacks different for different threads in my k-d tree traversal.
-
-
-
+We can observe that the k-d tree gives good improvement over the rest of the two implementations.
