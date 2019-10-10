@@ -70,4 +70,4 @@ We can see from the above graph that GPU performs way way better than the CPU im
 The grpah below shows the plot for timing of
 <p align="center"><img src="https://github.com/somanshu25/Parallel-Point-Cloud-Registration/blob/master/img/graph_gpu_kdtree.png" width="700"/></p>
 
-We can observe that the k-d tree gives good improvement over the rest of the two implementations.
+We can observe that the k-d tree gives good improvement over the rest of two implementations.
